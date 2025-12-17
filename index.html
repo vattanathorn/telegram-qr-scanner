@@ -11,7 +11,7 @@
             background-color: var(--tg-theme-secondary-bg-color, #efefef);
             color: var(--tg-theme-text-color, #000000);
             
-            /* Align items vertically */
+            /* Vertical Alignment */
             display: flex;
             flex-direction: column; 
             justify-content: center;
@@ -92,7 +92,7 @@
         <div class="label">Scanned Result:</div>
         <input type="text" id="scan-data" readonly>
         
-        <button class="btn-main" onclick="copyData()">
+        <button id="copy-btn" class="btn-main" onclick="copyData()">
             📋 Copy
         </button>
         
@@ -111,12 +111,14 @@
                 text: "Scan your QR Code"
             }, (text) => {
                 if (text) {
-                    // 1. Fill data
                     document.getElementById('scan-data').value = text;
-                    
-                    // 2. Show the result card
                     document.getElementById('result-card').style.display = 'flex';
                     
+                    // Reset button text in case it was changed to "Copied!" previously
+                    const btn = document.getElementById("copy-btn");
+                    btn.innerText = "📋 Copy";
+                    btn.style.backgroundColor = "var(--tg-theme-button-color, #3390ec)";
+
                     tg.closeScanQrPopup();
                     return true;
                 }
@@ -126,19 +128,27 @@
         function copyData() {
             const copyText = document.getElementById("scan-data");
             
-            // Select the text for mobile devices
+            // Select text for mobile compatibility
             copyText.select();
             copyText.setSelectionRange(0, 99999); 
 
-            // Use Clipboard API
             navigator.clipboard.writeText(copyText.value).then(() => {
-                // Success: Trigger Telegram Haptic Feedback
+                // 1. Vibration feedback (Success)
                 tg.HapticFeedback.notificationOccurred('success');
-                // Show Alert
-                tg.showAlert("Copied to clipboard!");
+
+                // 2. Change Button Text temporarily (Visual feedback without popup)
+                const btn = document.getElementById("copy-btn");
+                btn.innerText = "✅ Copied!";
+                btn.style.backgroundColor = "#4cc95e"; // Green color
+                
+                // Revert button text after 2 seconds
+                setTimeout(() => {
+                    btn.innerText = "📋 Copy";
+                    btn.style.backgroundColor = "var(--tg-theme-button-color, #3390ec)";
+                }, 2000);
+
             }).catch(err => {
-                // Fallback for older devices/browsers
-                tg.showAlert("Could not auto-copy. Please copy manually.");
+                console.error("Copy failed", err);
             });
         }
 
