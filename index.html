@@ -2,126 +2,163 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Scanner</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            /* Use Telegram's background color */
             background-color: var(--tg-theme-secondary-bg-color, #efefef);
+            color: var(--tg-theme-text-color, #000000);
+            
+            /* KEY FIX: Align items vertically */
             display: flex;
+            flex-direction: column; 
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
         }
 
-        /* HIDDEN INITIALLY: The Result Card */
+        /* The Result Card */
         #result-card {
-            display: none; /* This hides the page content until scan is done */
+            display: none; /* Hidden until scan is complete */
             background-color: var(--tg-theme-bg-color, #ffffff);
-            width: 90%;
-            max-width: 350px;
+            width: 100%;
+            max-width: 350px; /* Looks good on desktop too */
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            
             flex-direction: column;
             gap: 15px;
+            box-sizing: border-box;
         }
 
-        /* Styling for the inputs */
+        /* Label styling */
+        .label {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #888);
+            margin-bottom: 5px;
+        }
+
+        /* Input styling */
         input[type="text"] {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            border-radius: 10px;
             box-sizing: border-box;
-            background: #fafafa;
+            background: var(--tg-theme-secondary-bg-color, #fafafa);
+            color: var(--tg-theme-text-color, #000);
+            outline: none;
         }
 
-        .btn-send {
-            background-color: #3390ec;
-            color: white;
+        /* Main Blue Button */
+        .btn-main {
+            background-color: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
             border: none;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 14px;
+            border-radius: 10px;
             font-size: 16px;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
             width: 100%;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .btn-main:active {
+            opacity: 0.8;
         }
 
-        /* A fallback button in case they close the scanner without scanning */
+        /* Secondary Link Button */
+        .btn-link {
+            background: none;
+            border: none;
+            color: var(--tg-theme-link-color, #3390ec);
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            padding: 10px;
+        }
+
+        /* The big 'Open Scanner' button (fallback) */
         #retry-btn {
             display: none;
-            padding: 15px 30px;
-            background-color: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #fff);
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
+            margin-top: 20px; /* Adds space if it appears below the card */
+            width: 90%;
+            max-width: 350px;
         }
     </style>
 </head>
 <body>
 
     <div id="result-card">
-        <label style="font-size: 14px; color: #888;">Scanned Result:</label>
+        <div class="label">Scanned Result:</div>
         <input type="text" id="scan-data" readonly>
-        <button class="btn-send" onclick="sendData()">Send Result</button>
-        <br>
-        <button style="background:none; border:none; color:#3390ec; cursor:pointer;" onclick="triggerScan()">Scan Again</button>
+        
+        <button class="btn-main" onclick="sendData()">
+            Send Result
+        </button>
+        
+        <button class="btn-link" onclick="triggerScan()">
+            Scan Again
+        </button>
     </div>
 
-    <button id="retry-btn" onclick="triggerScan()">Open Scanner</button>
+    <button id="retry-btn" class="btn-main" onclick="triggerScan()">
+        Open Scanner
+    </button>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        // 1. Function to handle the Native Scanner
         function triggerScan() {
-            // Hide the retry button if it was visible
+            // Hide the manual retry button while scanning
             document.getElementById('retry-btn').style.display = 'none';
 
             tg.showScanQrPopup({
                 text: "Scan your QR Code"
             }, (text) => {
                 if (text) {
-                    // 2. SUCCESS: Fill data and show result page
+                    // 1. Fill data
                     document.getElementById('scan-data').value = text;
                     
-                    // Reveal the result card now
+                    // 2. Show the result card (flex column handles the layout)
                     document.getElementById('result-card').style.display = 'flex';
                     
-                    // Close the native scanner
+                    // 3. Hide the fallback button completely
+                    document.getElementById('retry-btn').style.display = 'none';
+                    
                     tg.closeScanQrPopup();
                     return true;
                 }
             });
         }
 
-        // 3. AUTO-START: Run this immediately when the page loads
-        // This ensures the user sees the camera first, not the page.
-        triggerScan();
-
-        // 4. Send Data back to Bot
         function sendData() {
             const data = document.getElementById('scan-data').value;
-            tg.sendData(data);
+            if(data) tg.sendData(data);
         }
-        
-        // Safety: If they close the scanner without scanning, show the Retry button
-        // (There isn't a direct "onCancel" callback, but if the popup closes 
-        // without a result, the user lands here on the empty body).
+
+        // Auto-start scanner on load
+        triggerScan();
+
+        // Safety check: If scanner closes without result, show the "Open Scanner" button
         setTimeout(() => {
             const cardIsVisible = document.getElementById('result-card').style.display === 'flex';
             if (!cardIsVisible) {
                 document.getElementById('retry-btn').style.display = 'block';
             }
-        }, 1000); // Check after 1 second if they aren't scanning/viewing results
+        }, 800);
     </script>
 </body>
 </html>
