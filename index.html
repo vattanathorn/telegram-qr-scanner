@@ -3,128 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan Tool Bot</title>
+    <title>Scanner</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-secondary-bg-color, #f0f0f0); 
+            font-family: -apple-system, sans-serif;
+            background-color: var(--tg-theme-secondary-bg-color, #efefef);
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            justify-content: flex-start;
             height: 100vh;
             margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
         }
 
-        /* The White Card Container */
-        .card {
+        /* HIDDEN INITIALLY: The Result Card */
+        #result-card {
+            display: none; /* This hides the page content until scan is done */
             background-color: var(--tg-theme-bg-color, #ffffff);
-            width: 100%;
+            width: 90%;
+            max-width: 350px;
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            display: flex;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             flex-direction: column;
             gap: 15px;
         }
 
-        /* The Result Input Box */
+        /* Styling for the inputs */
         input[type="text"] {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             font-size: 16px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid #ddd;
             border-radius: 8px;
-            background-color: #fafafa;
-            color: var(--tg-theme-text-color, #000);
-            outline: none;
             box-sizing: border-box;
+            background: #fafafa;
         }
 
-        /* The "Send" Button */
         .btn-send {
-            background-color: #2481cc; /* Telegram Blue/Teal */
+            background-color: #3390ec;
             color: white;
             border: none;
-            padding: 14px;
-            font-size: 16px;
-            font-weight: 600;
+            padding: 12px;
             border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
             width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-send:active {
-            opacity: 0.8;
         }
 
-        /* Re-scan button (optional, if they want to scan again) */
-        .btn-rescan {
-            margin-top: 10px;
-            color: var(--tg-theme-link-color, #2481cc);
-            background: none;
+        /* A fallback button in case they close the scanner without scanning */
+        #retry-btn {
+            display: none;
+            padding: 15px 30px;
+            background-color: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #fff);
             border: none;
-            font-size: 14px;
-            cursor: pointer;
+            border-radius: 8px;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <input type="text" id="scan-result" placeholder="Scanning..." readonly>
-
-        <button class="btn-send" onclick="sendData()">
-            📤 Send
-        </button>
+    <div id="result-card">
+        <label style="font-size: 14px; color: #888;">Scanned Result:</label>
+        <input type="text" id="scan-data" readonly>
+        <button class="btn-send" onclick="sendData()">Send Result</button>
+        <br>
+        <button style="background:none; border:none; color:#3390ec; cursor:pointer;" onclick="triggerScan()">Scan Again</button>
     </div>
 
-    <button class="btn-rescan" onclick="startScanner()">Scan Again</button>
+    <button id="retry-btn" onclick="triggerScan()">Open Scanner</button>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
-        tg.expand(); // Full screen
+        tg.expand();
 
-        // 1. Define the Scanner Logic
-        function startScanner() {
+        // 1. Function to handle the Native Scanner
+        function triggerScan() {
+            // Hide the retry button if it was visible
+            document.getElementById('retry-btn').style.display = 'none';
+
             tg.showScanQrPopup({
-                text: "Point camera at a QR code"
+                text: "Scan your QR Code"
             }, (text) => {
-                // --- THIS IS THE KEY PART ---
                 if (text) {
-                    // Populate the input box with the scanned text
-                    document.getElementById('scan-result').value = text;
+                    // 2. SUCCESS: Fill data and show result page
+                    document.getElementById('scan-data').value = text;
                     
-                    // Close the scanner immediately so user sees the result page
+                    // Reveal the result card now
+                    document.getElementById('result-card').style.display = 'flex';
+                    
+                    // Close the native scanner
                     tg.closeScanQrPopup();
                     return true;
                 }
             });
         }
 
-        // 2. Define the Send Logic
-        function sendData() {
-            const data = document.getElementById('scan-result').value;
-            if (data) {
-                tg.sendData(data); // Sends data back to Python bot
-            } else {
-                tg.showAlert("No data to send. Please scan first.");
-            }
-        }
+        // 3. AUTO-START: Run this immediately when the page loads
+        // This ensures the user sees the camera first, not the page.
+        triggerScan();
 
-        // 3. AUTO-START: Open scanner immediately when page loads
-        // This makes it feel seamless like a native feature.
+        // 4. Send Data back to Bot
+        function sendData() {
+            const data = document.getElementById('scan-data').value;
+            tg.sendData(data);
+        }
+        
+        // Safety: If they close the scanner without scanning, show the Retry button
+        // (There isn't a direct "onCancel" callback, but if the popup closes 
+        // without a result, the user lands here on the empty body).
         setTimeout(() => {
-            startScanner();
-        }, 500); 
+            const cardIsVisible = document.getElementById('result-card').style.display === 'flex';
+            if (!cardIsVisible) {
+                document.getElementById('retry-btn').style.display = 'block';
+            }
+        }, 1000); // Check after 1 second if they aren't scanning/viewing results
     </script>
 </body>
 </html>
