@@ -8,11 +8,10 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            /* Use Telegram's background color */
             background-color: var(--tg-theme-secondary-bg-color, #efefef);
             color: var(--tg-theme-text-color, #000000);
             
-            /* KEY FIX: Align items vertically */
+            /* Align items vertically */
             display: flex;
             flex-direction: column; 
             justify-content: center;
@@ -28,7 +27,7 @@
             display: none; /* Hidden until scan is complete */
             background-color: var(--tg-theme-bg-color, #ffffff);
             width: 100%;
-            max-width: 350px; /* Looks good on desktop too */
+            max-width: 350px;
             padding: 20px;
             border-radius: 15px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -38,14 +37,12 @@
             box-sizing: border-box;
         }
 
-        /* Label styling */
         .label {
             font-size: 14px;
             color: var(--tg-theme-hint-color, #888);
             margin-bottom: 5px;
         }
 
-        /* Input styling */
         input[type="text"] {
             width: 100%;
             padding: 14px;
@@ -87,14 +84,6 @@
             margin-top: 10px;
             padding: 10px;
         }
-
-        /* The big 'Open Scanner' button (fallback) */
-        #retry-btn {
-            display: none;
-            margin-top: 20px; /* Adds space if it appears below the card */
-            width: 90%;
-            max-width: 350px;
-        }
     </style>
 </head>
 <body>
@@ -103,8 +92,8 @@
         <div class="label">Scanned Result:</div>
         <input type="text" id="scan-data" readonly>
         
-        <button class="btn-main" onclick="sendData()">
-            Send Result
+        <button class="btn-main" onclick="copyData()">
+            📋 Copy
         </button>
         
         <button class="btn-link" onclick="triggerScan()">
@@ -112,19 +101,12 @@
         </button>
     </div>
 
-    <!-- <button id="retry-btn" class="btn-main" onclick="triggerScan()">
-        Open Scanner
-    </button> -->
-
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
         function triggerScan() {
-            // Hide the manual retry button while scanning
-            document.getElementById('retry-btn').style.display = 'none';
-
             tg.showScanQrPopup({
                 text: "Scan your QR Code"
             }, (text) => {
@@ -132,11 +114,8 @@
                     // 1. Fill data
                     document.getElementById('scan-data').value = text;
                     
-                    // 2. Show the result card (flex column handles the layout)
+                    // 2. Show the result card
                     document.getElementById('result-card').style.display = 'flex';
-                    
-                    // 3. Hide the fallback button completely
-                    document.getElementById('retry-btn').style.display = 'none';
                     
                     tg.closeScanQrPopup();
                     return true;
@@ -144,21 +123,27 @@
             });
         }
 
-        function sendData() {
-            const data = document.getElementById('scan-data').value;
-            if(data) tg.sendData(data);
+        function copyData() {
+            const copyText = document.getElementById("scan-data");
+            
+            // Select the text for mobile devices
+            copyText.select();
+            copyText.setSelectionRange(0, 99999); 
+
+            // Use Clipboard API
+            navigator.clipboard.writeText(copyText.value).then(() => {
+                // Success: Trigger Telegram Haptic Feedback
+                tg.HapticFeedback.notificationOccurred('success');
+                // Show Alert
+                tg.showAlert("Copied to clipboard!");
+            }).catch(err => {
+                // Fallback for older devices/browsers
+                tg.showAlert("Could not auto-copy. Please copy manually.");
+            });
         }
 
         // Auto-start scanner on load
         triggerScan();
-
-        // Safety check: If scanner closes without result, show the "Open Scanner" button
-        setTimeout(() => {
-            const cardIsVisible = document.getElementById('result-card').style.display === 'flex';
-            if (!cardIsVisible) {
-                document.getElementById('retry-btn').style.display = 'block';
-            }
-        }, 800);
     </script>
 </body>
 </html>
